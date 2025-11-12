@@ -1,0 +1,225 @@
+const { Order, Service, Customer } = require("../models");
+const { validationResult } = require("express-validator");
+const { Op } = require("sequelize");
+
+// Create order
+const createOrder = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors",
+        errors: errors.array(),
+      });
+    }
+
+    const { serviceId, customerId, description } = req.body;
+    const file = req.file ? req.file.path : null;
+
+    const order = await Order.create({
+      serviceId,
+      customerId,
+      description,
+      file,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Order created successfully",
+      data: { order },
+    });
+  } catch (error) {
+    console.error("Create order error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Get all orders
+const getAllOrders = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = "" } = req.query;
+    const offset = (page - 1) * limit;
+
+    const whereClause = {};
+    if (search) {
+      whereClause[Op.or] = [
+        { description: { [Op.like]: `%${search}%` } },
+      ];
+    }
+
+    const { count, rows } = await Order.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: Service,
+          as: "service",
+          attributes: ["id", "type", "description"],
+        },
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "name", "email", "phone"],
+        },
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        orders: rows,
+        pagination: {
+          total: count,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(count / limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get all orders error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Get order by ID
+const getOrderById = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findByPk(id, {
+      include: [
+        {
+          model: Service,
+          as: "service",
+          attributes: ["id", "type", "description"],
+        },
+        {
+          model: Customer,
+          as: "customer",
+          attributes: ["id", "name", "email", "phone"],
+        },
+      ],
+    });
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: { order },
+    });
+  } catch (error) {
+    console.error("Get order by ID error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Update order
+const updateOrder = async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        message: "Validation errors",
+        errors: errors.array(),
+      });
+    }
+
+    const { id } = req.params;
+    const order = await Order.findByPk(id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    const allowedUpdates = ["description"];
+    const updates = {};
+    
+    allowedUpdates.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
+
+    if (req.file) {
+      updates.file = req.file.path;
+    }
+
+    await order.update(updates);
+
+    res.status(200).json({
+      success: true,
+      message: "Order updated successfully",
+      data: { order },
+    });
+  } catch (error) {
+    console.error("Update order error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Delete order
+const deleteOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findByPk(id);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    await order.destroy();
+
+    res.status(200).json({
+      success: true,
+      message: "Order deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete order error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+module.exports = {
+  createOrder,
+  getAllOrders,
+  getOrderById,
+  updateOrder,
+  deleteOrder,
+};
