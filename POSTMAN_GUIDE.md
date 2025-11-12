@@ -47,7 +47,7 @@ This guide helps you set up and use the Postman collection for testing the Appoi
 - `DELETE /admins/:id` - Delete admin (admin only)
 
 ### 3. **Appointment Management**
-- `POST /appointments` - Create appointment (admin only)
+- `POST /appointments` - Create appointment (customer only)
 - `GET /appointments` - Get all appointments
 - `GET /appointments/:id` - Get appointment by ID
 - `PUT /appointments/:id` - Update appointment

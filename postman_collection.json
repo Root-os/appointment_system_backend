@@ -270,7 +270,7 @@
             "header": [
               {
                 "key": "Authorization",
-                "value": "Bearer {{adminToken}}"
+                "value": "Bearer {{customerToken}}"
               },
               {
                 "key": "Content-Type",
