@@ -31,6 +31,25 @@ const Order = sequelize.define("Order", {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  packageId: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: "Package",
+      key: "id",
+    },
+  },
+  startDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  dateCount: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    validate: {
+      min: 1,
+    },
+  },
 });
 
 

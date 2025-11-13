@@ -1,9 +1,6 @@
 const { body } = require("express-validator");
 
 const createReservationValidation = [
-  body("packageId")
-    .isInt({ min: 1 })
-    .withMessage("Valid package ID is required"),
   body("orderId")
     .isInt({ min: 1 })
     .withMessage("Valid order ID is required"),

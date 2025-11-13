@@ -22,7 +22,7 @@ const defineAssociations = () => {
   Service.hasMany(Order, { foreignKey: "serviceId", as: "orders" });
 
   // Package associations
-  Package.hasMany(Reservation, { foreignKey: "packageId", as: "reservations" });
+  Package.hasMany(Order, { foreignKey: "packageId", as: "orders" });
 
   // Appointment associations
   Appointment.belongsTo(Customer, { foreignKey: "customerId", as: "customer" });
@@ -30,14 +30,14 @@ const defineAssociations = () => {
   // Order associations
   Order.belongsTo(Customer, { foreignKey: "customerId", as: "customer" });
   Order.belongsTo(Service, { foreignKey: "serviceId", as: "service" });
+  Order.belongsTo(Package, { foreignKey: "packageId", as: "package" });
   Order.hasOne(Payment, { foreignKey: "orderId", as: "payment" });
-  Order.hasMany(Reservation, { foreignKey: "orderId", as: "reservations" });
+  Order.hasOne(Reservation, { foreignKey: "orderId", as: "reservation" });
 
   // Payment associations
   Payment.belongsTo(Order, { foreignKey: "orderId", as: "order" });
 
   // Reservation associations
-  Reservation.belongsTo(Package, { foreignKey: "packageId", as: "package" });
   Reservation.belongsTo(Order, { foreignKey: "orderId", as: "order" });
 
   // SMS associations

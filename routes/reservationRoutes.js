@@ -16,8 +16,8 @@ const {
 // Routes
 router.post("/", authenticateUser, createReservationValidation, createReservation);
 router.get("/", authenticateUser, getAllReservations);
-router.get("/:packageId/:orderId", authenticateUser, getReservationById);
-router.put("/:packageId/:orderId", authenticateUser, updateReservationValidation, updateReservation);
-router.delete("/:packageId/:orderId", authenticateUser, deleteReservation);
+router.get("/:orderId", authenticateUser, getReservationById);
+router.put("/:orderId", authenticateUser, updateReservationValidation, updateReservation);
+router.delete("/:orderId", authenticateUser, deleteReservation);
 
 module.exports = router;

@@ -22,13 +22,13 @@ const createServiceValidation = [
     .isLength({ max: 1000 })
     .withMessage("Description must not exceed 1000 characters"),
   body("startDate")
-    .optional()
-    .isISO8601()
-    .withMessage("Start date must be a valid date"),
+    .not()
+    .exists()
+    .withMessage("startDate field is not allowed for services"),
   body("dateCount")
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage("Date count must be at least 1"),
+    .not()
+    .exists()
+    .withMessage("dateCount field is not allowed for services"),
 ];
 
 const updateServiceValidation = [
@@ -54,14 +54,6 @@ const updateServiceValidation = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage("Description must not exceed 1000 characters"),
-  body("startDate")
-    .optional()
-    .isISO8601()
-    .withMessage("Start date must be a valid date"),
-  body("dateCount")
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage("Date count must be at least 1"),
   body("status")
     .optional()
     .isIn(["active", "inactive", "pending"])

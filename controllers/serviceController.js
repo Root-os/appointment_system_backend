@@ -20,8 +20,6 @@ const createService = async (req, res) => {
       costPerDate,
       costPerService,
       description,
-      startDate,
-      dateCount,
     } = req.body;
 
     const service = await Service.create({
@@ -30,8 +28,6 @@ const createService = async (req, res) => {
       costPerDate,
       costPerService,
       description,
-      startDate,
-      dateCount,
     });
 
     res.status(201).json({
@@ -162,8 +158,6 @@ const updateService = async (req, res) => {
       "costPerDate",
       "costPerService",
       "description",
-      "startDate",
-      "dateCount",
       "status",
     ];
 

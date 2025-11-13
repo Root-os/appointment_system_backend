@@ -2,17 +2,10 @@ const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
 const Reservation = sequelize.define("Reservation", {
-  packageId: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    references: {
-      model: "Package",
-      key: "id",
-    },
-  },
   orderId: {
     type: DataTypes.INTEGER,
     allowNull: false,
+    primaryKey: true,
     references: {
       model: "Order",
       key: "id",
@@ -31,7 +24,7 @@ const Reservation = sequelize.define("Reservation", {
     defaultValue: "pending",
   },
 }, {
-  // Remove the default id field since we're using composite key
+  // Remove the default id field since we're using orderId as primary key
   id: false,
 });
 

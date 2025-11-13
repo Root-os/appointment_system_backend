@@ -22,7 +22,7 @@ const Package = sequelize.define("Package", {
       min: 0,
     },
   },
-  description: {
+  detail: {
     type: DataTypes.TEXT,
     allowNull: true,
   },

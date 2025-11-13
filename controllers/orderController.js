@@ -1,4 +1,4 @@
-const { Order, Service, Customer } = require("../models");
+const { Order, Service, Customer, Package } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
@@ -14,7 +14,7 @@ const createOrder = async (req, res) => {
       });
     }
 
-    const { serviceId, customerId, description } = req.body;
+    const { serviceId, customerId, description, packageId, startDate, dateCount } = req.body;
     const file = req.file ? req.file.path : null;
 
     const order = await Order.create({
@@ -22,6 +22,9 @@ const createOrder = async (req, res) => {
       customerId,
       description,
       file,
+      packageId,
+      startDate,
+      dateCount,
     });
 
     res.status(201).json({
@@ -65,7 +68,13 @@ const getAllOrders = async (req, res) => {
           as: "customer",
           attributes: ["id", "name", "email", "phone"],
         },
+        {
+          model: Package,
+          as: "package",
+          attributes: ["id", "name", "price"],
+        },
       ],
+      attributes: { exclude: ["customerId", "serviceId", "packageId"]},
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [["createdAt", "DESC"]],
@@ -109,6 +118,11 @@ const getOrderById = async (req, res) => {
           model: Customer,
           as: "customer",
           attributes: ["id", "name", "email", "phone"],
+        },
+        {
+          model: Package,
+          as: "package",
+          attributes: ["id", "name", "price"],
         },
       ],
     });
@@ -156,7 +170,7 @@ const updateOrder = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ["description"];
+    const allowedUpdates = ["description", "packageId", "startDate", "dateCount"];
     const updates = {};
     
     allowedUpdates.forEach((field) => {

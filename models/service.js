@@ -37,17 +37,6 @@ const Service = sequelize.define("Service", {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  startDate: {
-    type: DataTypes.DATEONLY,
-    allowNull: true,
-  },
-  dateCount: {
-    type: DataTypes.INTEGER,
-    allowNull: true,
-    validate: {
-      min: 1,
-    },
-  },
   status: {
     type: DataTypes.ENUM("active", "inactive", "pending"),
     defaultValue: "active",

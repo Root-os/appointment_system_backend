@@ -7,6 +7,18 @@ const createOrderValidation = [
   body("customerId")
     .isInt({ min: 1 })
     .withMessage("Valid customer ID is required"),
+  body("packageId")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Valid package ID is required"),
+  body("startDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Start date must be a valid date"),
+  body("dateCount")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Date count must be at least 1"),
   body("description")
     .optional()
     .trim()
@@ -15,6 +27,18 @@ const createOrderValidation = [
 ];
 
 const updateOrderValidation = [
+  body("packageId")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Valid package ID is required"),
+  body("startDate")
+    .optional()
+    .isISO8601()
+    .withMessage("Start date must be a valid date"),
+  body("dateCount")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Date count must be at least 1"),
   body("description")
     .optional()
     .trim()

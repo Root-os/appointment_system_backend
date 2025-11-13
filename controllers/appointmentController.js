@@ -64,6 +64,7 @@ const getAllAppointments = async (req, res) => {
           attributes: ["id", "name", "email", "phone"],
         },
       ],
+      attributes: { exclude: ["customerId"] },
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [["createdAt", "DESC"]],

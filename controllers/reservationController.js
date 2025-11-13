@@ -1,4 +1,4 @@
-const { Reservation, Package, Order } = require("../models");
+const { Reservation, Order, Package } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
@@ -14,10 +14,9 @@ const createReservation = async (req, res) => {
       });
     }
 
-    const { packageId, orderId, startDate, endDate } = req.body;
+    const { orderId, startDate, endDate } = req.body;
 
     const reservation = await Reservation.create({
-      packageId,
       orderId,
       startDate,
       endDate,
@@ -54,14 +53,16 @@ const getAllReservations = async (req, res) => {
       where: whereClause,
       include: [
         {
-          model: Package,
-          as: "package",
-          attributes: ["id", "name", "price"],
-        },
-        {
           model: Order,
           as: "order",
           attributes: ["id", "description"],
+          include: [
+            {
+              model: Package,
+              as: "package",
+              attributes: ["id", "name", "price"],
+            },
+          ],
         },
       ],
       limit: parseInt(limit),
@@ -94,20 +95,21 @@ const getAllReservations = async (req, res) => {
 // Get reservation by composite key
 const getReservationById = async (req, res) => {
   try {
-    const { packageId, orderId } = req.params;
+    const { orderId } = req.params;
 
-    const reservation = await Reservation.findOne({
-      where: { packageId, orderId },
+    const reservation = await Reservation.findByPk(orderId, {
       include: [
-        {
-          model: Package,
-          as: "package",
-          attributes: ["id", "name", "price"],
-        },
         {
           model: Order,
           as: "order",
           attributes: ["id", "description"],
+          include: [
+            {
+              model: Package,
+              as: "package",
+              attributes: ["id", "name", "price"],
+            },
+          ],
         },
       ],
     });
@@ -145,10 +147,8 @@ const updateReservation = async (req, res) => {
       });
     }
 
-    const { packageId, orderId } = req.params;
-    const reservation = await Reservation.findOne({
-      where: { packageId, orderId },
-    });
+    const { orderId } = req.params;
+    const reservation = await Reservation.findByPk(orderId);
 
     if (!reservation) {
       return res.status(404).json({
@@ -186,11 +186,9 @@ const updateReservation = async (req, res) => {
 // Delete reservation
 const deleteReservation = async (req, res) => {
   try {
-    const { packageId, orderId } = req.params;
+    const { orderId } = req.params;
 
-    const reservation = await Reservation.findOne({
-      where: { packageId, orderId },
-    });
+    const reservation = await Reservation.findByPk(orderId);
 
     if (!reservation) {
       return res.status(404).json({
