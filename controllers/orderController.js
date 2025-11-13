@@ -14,7 +14,7 @@ const createOrder = async (req, res) => {
       });
     }
 
-    const { serviceId, customerId, description, packageId, startDate, dateCount } = req.body;
+    const { serviceId, customerId, description, packageId, startDate, dateCount, status } = req.body;
     const file = req.file ? req.file.path : null;
 
     const order = await Order.create({
@@ -25,6 +25,7 @@ const createOrder = async (req, res) => {
       packageId,
       startDate,
       dateCount,
+      status,
     });
 
     res.status(201).json({
@@ -45,7 +46,7 @@ const createOrder = async (req, res) => {
 // Get all orders
 const getAllOrders = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { page = 1, limit = 10, search = "", status = "" } = req.query;
     const offset = (page - 1) * limit;
 
     const whereClause = {};
@@ -53,6 +54,10 @@ const getAllOrders = async (req, res) => {
       whereClause[Op.or] = [
         { description: { [Op.like]: `%${search}%` } },
       ];
+    }
+
+    if (status) {
+      whereClause.status = status;
     }
 
     const { count, rows } = await Order.findAndCountAll({
@@ -170,7 +175,7 @@ const updateOrder = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ["description", "packageId", "startDate", "dateCount"];
+    const allowedUpdates = ["description", "packageId", "startDate", "dateCount", "status"];
     const updates = {};
     
     allowedUpdates.forEach((field) => {

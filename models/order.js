@@ -50,6 +50,10 @@ const Order = sequelize.define("Order", {
       min: 1,
     },
   },
+  status: {
+    type: DataTypes.ENUM("pending", "confirmed", "in_progress", "completed", "cancelled"),
+    defaultValue: "pending",
+  },
 });
 
 

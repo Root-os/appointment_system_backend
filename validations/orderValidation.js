@@ -19,6 +19,10 @@ const createOrderValidation = [
     .optional()
     .isInt({ min: 1 })
     .withMessage("Date count must be at least 1"),
+  body("status")
+    .optional()
+    .isIn(["pending", "confirmed", "in_progress", "completed", "cancelled"])
+    .withMessage("Status must be pending, confirmed, in_progress, completed, or cancelled"),
   body("description")
     .optional()
     .trim()
@@ -39,6 +43,10 @@ const updateOrderValidation = [
     .optional()
     .isInt({ min: 1 })
     .withMessage("Date count must be at least 1"),
+  body("status")
+    .optional()
+    .isIn(["pending", "confirmed", "in_progress", "completed", "cancelled"])
+    .withMessage("Status must be pending, confirmed, in_progress, completed, or cancelled"),
   body("description")
     .optional()
     .trim()
