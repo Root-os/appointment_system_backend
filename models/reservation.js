@@ -24,7 +24,7 @@ const Reservation = sequelize.define("Reservation", {
     defaultValue: "pending",
   },
 }, {
-  // Remove the default id field since we're using orderId as primary key
+
   id: false,
 });
 

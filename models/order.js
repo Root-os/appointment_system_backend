@@ -39,7 +39,7 @@ const Order = sequelize.define("Order", {
       key: "id",
     },
   },
-  startDate: {
+  date: {
     type: DataTypes.DATEONLY,
     allowNull: true,
   },
