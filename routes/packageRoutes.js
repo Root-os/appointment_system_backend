@@ -15,8 +15,8 @@ const {
 
 // Routes
 router.post("/", authenticateAdmin, createPackageValidation, createPackage);
-router.get("/", authenticateUser, getAllPackages);
-router.get("/:id", authenticateUser, getPackageById);
+router.get("/", getAllPackages);
+router.get("/:id", getPackageById);
 router.put("/:id", authenticateAdmin, updatePackageValidation, updatePackage);
 router.delete("/:id", authenticateAdmin, deletePackage);
 

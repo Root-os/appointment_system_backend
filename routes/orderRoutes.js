@@ -15,7 +15,7 @@ const {
 } = require("../validations/orderValidation");
 
 // Routes
-router.post("/", authenticateCustomer, uploadSingle("file"), createOrderValidation, createOrder);
+router.post("/", uploadSingle("file"), createOrderValidation, createOrder);
 router.get("/", authenticateUser, getAllOrders);
 router.get("/:id", authenticateUser, getOrderById);
 router.put("/:id", authenticateUser, uploadSingle("file"), updateOrderValidation, updateOrder);

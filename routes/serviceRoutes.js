@@ -15,8 +15,8 @@ const {
 
 // Routes
 router.post("/", authenticateAdmin, createServiceValidation, createService);
-router.get("/", authenticateUser, getAllServices);
-router.get("/:id", authenticateUser, getServiceById);
+router.get("/", getAllServices);
+router.get("/:id", getServiceById);
 router.put("/:id", authenticateAdmin, updateServiceValidation, updateService);
 router.delete("/:id", authenticateAdmin, deleteService);
 
