@@ -96,10 +96,8 @@ const getAllReservations = async (req, res) => {
   }
 };
 
-
-
 // Get reservation by composite key
-const getReservationById = async (req, res) => {
+const getReservationByOrderId = async (req, res) => {
   try {
     const { orderId } = req.params;
 
@@ -141,20 +139,36 @@ const getReservationById = async (req, res) => {
   }
 };
 
-// Update reservation
-const updateReservation = async (req, res) => {
+const getReservationById = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation errors",
-        errors: errors.array(),
-      });
-    }
+    const { id } = req.params; 
 
-    const { orderId } = req.params;
-    const reservation = await Reservation.findByPk(orderId);
+    const reservation = await Reservation.findByPk(id, {
+      include: [
+        {
+          model: Order,
+          as: "order",
+          attributes: ["id", "description", "date", "dateCount", "status"],
+          include: [
+            {
+              model: Package,
+              as: "package",
+              attributes: ["id", "name", "price"],
+            },
+            {
+              model: Service,
+              as: "service",
+              attributes: ["id", "name", "type", "costPerDate", "costPerService"],
+            },
+            {
+              model: Customer,
+              as: "customer",
+              attributes: ["id", "name", "email", "phone"],
+            },
+          ],
+        },
+      ],
+    });
 
     if (!reservation) {
       return res.status(404).json({
@@ -163,24 +177,12 @@ const updateReservation = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ["date", "startDate", "endDate", "status"];
-
-    const updates = {};
-    allowedUpdates.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
-    });
-
-    await reservation.update(updates);
-
     res.status(200).json({
       success: true,
-      message: "Reservation updated successfully",
       data: { reservation },
     });
   } catch (error) {
-    console.error("Update reservation error:", error);
+    console.error("Get reservation by ID error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -188,6 +190,54 @@ const updateReservation = async (req, res) => {
     });
   }
 };
+
+// Update reservation
+// const updateReservation = async (req, res) => {
+//   try {
+//     const errors = validationResult(req);
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Validation errors",
+//         errors: errors.array(),
+//       });
+//     }
+
+//     const { orderId } = req.params;
+//     const reservation = await Reservation.findByPk(orderId);
+
+//     if (!reservation) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Reservation not found",
+//       });
+//     }
+
+//     const allowedUpdates = ["date", "startDate", "endDate", "status"];
+
+//     const updates = {};
+//     allowedUpdates.forEach((field) => {
+//       if (req.body[field] !== undefined) {
+//         updates[field] = req.body[field];
+//       }
+//     });
+
+//     await reservation.update(updates);
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Reservation updated successfully",
+//       data: { reservation },
+//     });
+//   } catch (error) {
+//     console.error("Update reservation error:", error);
+//     res.status(500).json({
+//       success: false,
+//       message: "Internal server error",
+//       error: error.message,
+//     });
+//   }
+// };
 
 // Delete reservation
 const deleteReservation = async (req, res) => {
@@ -223,6 +273,7 @@ module.exports = {
   createReservation,
   getAllReservations,
   getReservationById,
-  updateReservation,
+  getReservationByOrderId,
+  // updateReservation,
   deleteReservation,
 };
