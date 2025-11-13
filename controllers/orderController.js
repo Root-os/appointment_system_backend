@@ -5,6 +5,9 @@ const { Op } = require("sequelize");
 // Create order
 const createOrder = async (req, res) => {
   try {
+        console.log("=== req.body ===", req.body);
+    console.log("=== req.file ===", req.file);
+    console.log("=== date field ===", req.body.date);
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -14,17 +17,26 @@ const createOrder = async (req, res) => {
       });
     }
 
-    const { serviceId, customerId, description, packageId, startDate, dateCount, status } = req.body;
+    const { serviceId, customerId, description, packageId, date, dateCount, status } = req.body;
     const file = req.file ? req.file.path : null;
 
+    // Parse fields because formData sends everything as string
+    const parsedDate = date ? new Date(date) : null;
+    const parsedServiceId = serviceId ? Number(serviceId) : null;
+    const parsedCustomerId = customerId ? Number(customerId) : null;
+    const parsedPackageId = packageId ? Number(packageId) : null;
+    const parsedDateCount = dateCount ? Number(dateCount) : null;
+
+     console.log("=== parsedDate ===", parsedDate);
+
     const order = await Order.create({
-      serviceId,
-      customerId,
+      serviceId: parsedServiceId,
+      customerId: parsedCustomerId,
       description,
       file,
-      packageId,
-      startDate,
-      dateCount,
+      packageId: parsedPackageId,
+      date: parsedDate,
+      dateCount: parsedDateCount,
       status,
     });
 
@@ -42,6 +54,7 @@ const createOrder = async (req, res) => {
     });
   }
 };
+
 
 // Get all orders
 const getAllOrders = async (req, res) => {
@@ -175,7 +188,7 @@ const updateOrder = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ["description", "packageId", "startDate", "dateCount", "status"];
+    const allowedUpdates = ["description", "packageId", "date", "dateCount", "status"];
     const updates = {};
     
     allowedUpdates.forEach((field) => {

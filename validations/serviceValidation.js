@@ -31,6 +31,7 @@ const createServiceValidation = [
     .withMessage("dateCount field is not allowed for services"),
 ];
 
+
 const updateServiceValidation = [
   body("name")
     .optional()

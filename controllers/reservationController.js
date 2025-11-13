@@ -14,10 +14,11 @@ const createReservation = async (req, res) => {
       });
     }
 
-    const { orderId, startDate, endDate } = req.body;
+    const { orderId, date, startDate, endDate } = req.body;
 
     const reservation = await Reservation.create({
       orderId,
+      date,
       startDate,
       endDate,
       status: "pending",
@@ -157,7 +158,7 @@ const updateReservation = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ["startDate", "endDate", "status"];
+    const allowedUpdates = ["date", "startDate", "endDate", "status"];
 
     const updates = {};
     allowedUpdates.forEach((field) => {
