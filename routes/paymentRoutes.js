@@ -13,7 +13,7 @@ const {
 } = require("../validations/paymentValidation");
 
 // Routes
-router.post("/", authenticateUser, createPaymentValidation, createPayment);
+router.post("/", createPaymentValidation, createPayment);
 router.get("/", authenticateUser, getAllPayments);
 router.get("/:id", authenticateUser, getPaymentById);
 router.put("/:id", authenticateUser, updatePaymentValidation, updatePayment);

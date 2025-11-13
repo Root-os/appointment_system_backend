@@ -1,4 +1,4 @@
-const { Reservation, Order, Package } = require("../models");
+const { Reservation, Order, Package, Service, Customer } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
@@ -21,7 +21,6 @@ const createReservation = async (req, res) => {
       date,
       startDate,
       endDate,
-      status: "pending",
     });
 
     res.status(201).json({
@@ -42,26 +41,30 @@ const createReservation = async (req, res) => {
 // Get all reservations
 const getAllReservations = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status = "" } = req.query;
+    const { page = 1, limit = 10 } = req.query;
     const offset = (page - 1) * limit;
 
-    const whereClause = {};
-    if (status) {
-      whereClause.status = status;
-    }
-
     const { count, rows } = await Reservation.findAndCountAll({
-      where: whereClause,
       include: [
         {
           model: Order,
           as: "order",
-          attributes: ["id", "description"],
+          attributes: ["id", "description", "date", "dateCount", "status"],
           include: [
             {
               model: Package,
               as: "package",
               attributes: ["id", "name", "price"],
+            },
+            {
+              model: Service,
+              as: "service",
+              attributes: ["id", "name", "type", "costPerDate", "costPerService"],
+            },
+            {
+              model: Customer,
+              as: "customer",
+              attributes: ["id", "name", "email", "phone"],
             },
           ],
         },
@@ -92,6 +95,8 @@ const getAllReservations = async (req, res) => {
     });
   }
 };
+
+
 
 // Get reservation by composite key
 const getReservationById = async (req, res) => {

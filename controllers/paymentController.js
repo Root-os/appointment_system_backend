@@ -1,9 +1,10 @@
-const { Payment, Order } = require("../models");
+const { Payment, Order, Reservation, Service, sequelize } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
 // Create payment
 const createPayment = async (req, res) => {
+  const t = await sequelize.transaction(); // start transaction
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -16,20 +17,61 @@ const createPayment = async (req, res) => {
 
     const { orderId, amount, paymentOption, json } = req.body;
 
-    const payment = await Payment.create({
-      orderId,
-      amount,
-      paymentOption,
-      status: "pending",
-      json: json || {},
-    });
+    // 1️⃣ Create Payment
+    const payment = await Payment.create(
+      {
+        orderId,
+        amount,
+        paymentOption,
+        status: "completed", // mark as completed
+        json: json || {},
+      },
+      { transaction: t }
+    );
+
+    // 2️⃣ Fetch the order with its service
+    const order = await Order.findByPk(orderId, { transaction: t });
+    if (!order) throw new Error("Order not found");
+
+    const service = await Service.findByPk(order.serviceId, { transaction: t });
+    if (!service) throw new Error("Service not found");
+
+    // 3️⃣ Generate Reservation
+    if (service.type === "fixed") {
+      await Reservation.create(
+        {
+          orderId,
+          date: order.date,
+          status: "confirmed",
+        },
+        { transaction: t }
+      );
+    } else if (service.type === "perDate" && order.date && order.dateCount) {
+      const startDate = new Date(order.date);
+      const endDate = new Date(startDate);
+      endDate.setDate(endDate.getDate() + order.dateCount - 1);
+
+      await Reservation.create(
+        {
+          orderId,
+          startDate: startDate.toISOString().split("T")[0],
+          endDate: endDate.toISOString().split("T")[0],
+          status: "confirmed",
+        },
+        { transaction: t }
+      );
+    }
+
+    // 4️⃣ Commit transaction
+    await t.commit();
 
     res.status(201).json({
       success: true,
-      message: "Payment created successfully",
+      message: "Payment created and reservation generated successfully",
       data: { payment },
     });
   } catch (error) {
+    await t.rollback(); // rollback on error
     console.error("Create payment error:", error);
     res.status(500).json({
       success: false,

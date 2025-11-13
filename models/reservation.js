@@ -29,20 +29,10 @@ const Reservation = sequelize.define(
       type: DataTypes.DATEONLY,
       allowNull: true,
     },
-    status: {
-      type: DataTypes.ENUM(
-        "pending",
-        "confirmed",
-        "active",
-        "completed",
-        "cancelled"
-      ),
-      defaultValue: "pending",
-    },
   },
   {
-    tableName: "Reservations", // optional: explicit table name
-    timestamps: true, // keeps createdAt and updatedAt
+    tableName: "Reservations", 
+    timestamps: true, 
   }
 );
 
