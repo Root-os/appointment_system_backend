@@ -4,6 +4,7 @@ const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 require("dotenv").config();
+const { setupScheduledJobs } = require("./jobs/scheduledJobs");
 
 const { sequelize } = require("./models");
 const routes = require("./routes");
@@ -68,6 +69,12 @@ sequelize
   })
   .then(() => {
     console.log("✅ Database synchronized successfully.");
+    // Initialize scheduled jobs
+    if (process.env.NODE_ENV !== 'test') {
+      setupScheduledJobs();
+      console.log('✅ Scheduled jobs initialized');
+    }
+
     app.listen(PORT, () => {
       console.log(`🚀 Server is running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);

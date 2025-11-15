@@ -21,7 +21,7 @@ const Payment = sequelize.define("Payment", {
     validate: {
       min: 0,
     },
-  },
+  }, 
   paymentOption: {
     type: DataTypes.STRING,
     allowNull: false,

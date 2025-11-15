@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   createOrder,
   getAllOrders,
+  getMyOrders,
   getOrderById,
   updateOrder,
   deleteOrder,
@@ -17,6 +18,7 @@ const {
 // Routes
 router.post("/", uploadSingle("file"), createOrderValidation, createOrder);
 router.get("/", authenticateUser, getAllOrders);
+router.get("/my-orders", authenticateCustomer, getMyOrders);
 router.get("/:id", authenticateUser, getOrderById);
 router.put("/:id", authenticateUser, uploadSingle("file"), updateOrderValidation, updateOrder);
 router.delete("/:id", authenticateUser, deleteOrder);

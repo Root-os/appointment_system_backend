@@ -16,7 +16,6 @@ const createOrder = async (req, res) => {
         errors: errors.array(),
       });
     }
-
     const { serviceId, customerId, description, packageId, date, dateCount, status } = req.body;
     const file = req.file ? req.file.path : null;
 
@@ -119,6 +118,44 @@ const getAllOrders = async (req, res) => {
     });
   }
 };
+
+// Get orders for logged-in customer
+const getMyOrders = async (req, res) => {
+  try {
+    const customerId = req.user.id; // from decoded token
+
+    const orders = await Order.findAll({
+      where: { customerId },
+      include: [
+        {
+          model: Service,
+          as: "service",
+          attributes: ["id", "type", "description"],
+        },
+        {
+          model: Package,
+          as: "package",
+          attributes: ["id", "name", "price"],
+        },
+      ],
+      attributes: { exclude: ["customerId", "serviceId", "packageId"] },
+      order: [["createdAt", "DESC"]],
+    });
+
+    res.status(200).json({
+      success: true,
+      data: { orders },
+    });
+  } catch (error) {
+    console.error("Get my orders error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
 
 // Get order by ID
 const getOrderById = async (req, res) => {
@@ -251,6 +288,7 @@ const deleteOrder = async (req, res) => {
 module.exports = {
   createOrder,
   getAllOrders,
+  getMyOrders,
   getOrderById,
   updateOrder,
   deleteOrder,

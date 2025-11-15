@@ -4,11 +4,24 @@ const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
 // Generate JWT token
-const generateToken = (id) => {
-  return jwt.sign({ id, type: "customer" }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+// Generate JWT token
+const generateToken = (customer) => {
+  return jwt.sign(
+    {
+      id: customer.id,
+      name: customer.name,
+      email: customer.email,
+      phone: customer.phone,
+      address: customer.address,
+      type: "customer",
+    },
+    process.env.JWT_SECRET,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN,
+    }
+  );
 };
+
 
 // Register customer
 const registerCustomer = async (req, res) => {
@@ -100,7 +113,7 @@ const loginCustomer = async (req, res) => {
 
 
     // Generate token
-    const token = generateToken(customer.id);
+    const token = generateToken(customer);
 
     res.status(200).json({
       success: true,

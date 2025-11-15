@@ -21,14 +21,6 @@ const createServiceValidation = [
     .trim()
     .isLength({ max: 1000 })
     .withMessage("Description must not exceed 1000 characters"),
-  body("startDate")
-    .not()
-    .exists()
-    .withMessage("startDate field is not allowed for services"),
-  body("dateCount")
-    .not()
-    .exists()
-    .withMessage("dateCount field is not allowed for services"),
 ];
 
 

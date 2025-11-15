@@ -1,6 +1,8 @@
 const { Appointment, Customer } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
+const appointmentSMSController = require("./appointmentSMSController");
+const logger = require("pino")();
 
 // Create appointment
 const createAppointment = async (req, res) => {
@@ -22,6 +24,31 @@ const createAppointment = async (req, res) => {
       hospitalName,
       status: "pending",
     });
+
+    // Send confirmation SMS
+    try {
+      const customer = await Customer.findByPk(customerId);
+      if (customer && customer.phone) {
+        const formattedDate = new Date(dateTime).toLocaleString('en-US', {
+          weekday: 'long',
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        const message = `Dear ${customer.name}, your appointment at ${hospitalName} is scheduled for ${formattedDate}. Status: Pending.`;
+        
+        logger.info({ customerId: customer.id, phone: customer.phone }, 'Sending appointment confirmation SMS');
+        await appointmentSMSController.sendAppointmentSMS(customer.phone, message);
+      } else {
+        logger.warn({ customerId }, 'Customer not found or missing phone number, skipping SMS');
+      }
+    } catch (smsError) {
+      logger.error({ error: smsError.message }, 'Failed to send appointment confirmation SMS');
+      // Don't fail the request if SMS fails
+    }
 
     res.status(201).json({
       success: true,
@@ -131,18 +158,13 @@ const getAppointmentById = async (req, res) => {
 // Update appointment
 const updateAppointment = async (req, res) => {
   try {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation errors",
-        errors: errors.array(),
-      });
-    }
-
     const { id } = req.params;
-    const appointment = await Appointment.findByPk(id);
+    const { status, dateTime, hospitalName } = req.body;
 
+    const appointment = await Appointment.findByPk(id, {
+      include: [{ model: Customer, as: 'customer' }]
+    });
+    
     if (!appointment) {
       return res.status(404).json({
         success: false,
@@ -150,21 +172,72 @@ const updateAppointment = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ["dateTime", "hospitalName", "status"];
+    // Store previous status for comparison
+    const previousStatus = appointment.status;
 
-    const updates = {};
-    allowedUpdates.forEach((field) => {
-      if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
-      }
+    // Update the appointment
+    const updatedAppointment = await appointment.update({
+      status: status || appointment.status,
+      dateTime: dateTime || appointment.dateTime,
+      hospitalName: hospitalName || appointment.hospitalName,
     });
 
-    await appointment.update(updates);
+    // Send status update SMS if status changed
+    if (status && status !== previousStatus) {
+      try {
+        if (appointment.customer?.phone) {
+          const formattedDate = new Date(updatedAppointment.dateTime).toLocaleString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          
+          let message = '';
+          
+          switch (status) {
+            case 'confirmed':
+              message = `Dear ${appointment.customer.name}, your appointment at ${updatedAppointment.hospitalName} on ${formattedDate} has been confirmed.`;
+              break;
+            case 'rejected':
+              message = `Dear ${appointment.customer.name}, we regret to inform you that your appointment at ${updatedAppointment.hospitalName} has been rejected. Please contact us for more information.`;
+              break;
+            case 'completed':
+              message = `Dear ${appointment.customer.name}, thank you for visiting ${updatedAppointment.hospitalName}. We appreciate your trust in our services!`;
+              break;
+            case 'cancelled':
+              message = `Dear ${appointment.customer.name}, your appointment at ${updatedAppointment.hospitalName} on ${formattedDate} has been cancelled.`;
+              break;
+          }
+          
+          if (message) {
+            logger.info({ 
+              appointmentId: id, 
+              status, 
+              phone: appointment.customer.phone 
+            }, 'Sending appointment status update SMS');
+            
+            await appointmentSMSController.sendAppointmentSMS(
+              appointment.customer.phone,
+              message
+            );
+          }
+        }
+      } catch (smsError) {
+        logger.error(
+          { error: smsError.message, appointmentId: id },
+          'Failed to send status update SMS'
+        );
+        // Don't fail the request if SMS fails
+      }
+    }
 
-    res.status(200).json({
+    res.json({
       success: true,
       message: "Appointment updated successfully",
-      data: { appointment },
+      data: { appointment: updatedAppointment },
     });
   } catch (error) {
     console.error("Update appointment error:", error);
