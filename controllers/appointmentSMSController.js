@@ -1,43 +1,97 @@
 const createSingleSMSUtil = require("../utils/singleSMSUtil");
-const logger = require("pino")();
+const pino = require('pino');
+const logger = pino({
+  level: process.env.LOG_LEVEL || 'info',
+  transport: {
+    target: 'pino-pretty',
+    options: {
+      colorize: true
+    }
+  }
+});
 const Appointment = require("../models/appointment");
 const Customer = require("../models/customer");
 const { Op } = require("sequelize");
 const moment = require("moment");
+
 // Load environment variables
 require('dotenv').config();
 
+// Log environment configuration
+logger.info('=== SMS Service Initialization ===');
+logger.info(`GEEZSMS_TOKEN: ${process.env.GEEZSMS_TOKEN ? '***' + process.env.GEEZSMS_TOKEN.slice(-4) : 'NOT SET'}`);
+logger.info(`GEEZSMS_SHORTCODE_ID: ${process.env.GEEZSMS_SHORTCODE_ID || 'Not set'}`);
+logger.info(`GEEZSMS_WEBHOOK_URL: ${process.env.GEEZSMS_WEBHOOK_URL || 'Not set'}`);
+logger.info(`APPOINTMENT_REMINDER_HOURS: ${process.env.APPOINTMENT_REMINDER_HOURS || '24 (default)'}`);
+
 // Initialize SMS utility with token
-const singleSMSUtil = createSingleSMSUtil({
-  token: process.env.GEEZSMS_TOKEN,
-});
+let singleSMSUtil;
+try {
+  if (!process.env.GEEZSMS_TOKEN) {
+    logger.fatal('GEEZSMS_TOKEN is not set in environment variables');
+  } else {
+    singleSMSUtil = createSingleSMSUtil({
+      token: process.env.GEEZSMS_TOKEN,
+    });
+    logger.info('SMS utility initialized successfully');
+  }
+} catch (error) {
+  logger.fatal({ error: error.message }, 'Failed to initialize SMS utility');
+  throw error;
+}
 
 const APPOINTMENT_REMINDER_HOURS = parseInt(process.env.APPOINTMENT_REMINDER_HOURS) || 24;
+logger.info(`Reminder hours set to: ${APPOINTMENT_REMINDER_HOURS}`);
 
 // Make this function available to other modules
-async function sendAppointmentSMS(phone, message) {
+async function sendAppointmentSMS(phone, message, context = {}) {
+  const logContext = {
+    ...context,
+    phone: phone ? phone.replace(/\d(?=\d{4})/g, '*') : 'undefined',
+    messageLength: message?.length || 0
+  };
+  
+  logger.info(logContext, 'SMS sending initiated');
+  
+  if (!phone || !message) {
+    const error = new Error('Phone and message are required');
+    logger.error({ ...logContext, error: error.message }, 'Validation failed');
+    throw error;
+  }
   if (!phone || !message) {
     logger.error({ phone, message }, 'Missing phone or message for SMS');
     throw new Error('Phone and message are required');
   }
   
-  // Ensure phone number is in the correct format
+  // Format phone number
   let formattedPhone = phone;
   if (phone.startsWith('0')) {
     formattedPhone = '251' + phone.substring(1);
-  } else if (!phone.startsWith('251')) {
+    logger.debug(`Formatted phone from 0: ${phone} -> ${formattedPhone}`);
+  } else if (phone.startsWith('9') || phone.startsWith('7')) {
     formattedPhone = '251' + phone;
+    logger.debug(`Formatted phone from 9/7: ${phone} -> ${formattedPhone}`);
+  } else if (!phone.startsWith('251')) {
+    const error = new Error('Phone number must start with 0, 7, 9, or 251');
+    logger.error({ ...logContext, error: error.message }, 'Invalid phone format');
+    throw error;
   }
   
-  logger.info({ originalPhone: phone, formattedPhone }, 'Sending SMS to phone');
+  logger.debug({ 
+    ...logContext,
+    formattedPhone: formattedPhone.replace(/\d(?=\d{4})/g, '*'),
+    hasShortcode: !!process.env.GEEZSMS_SHORTCODE_ID,
+    hasWebhook: !!process.env.GEEZSMS_WEBHOOK_URL
+  }, 'SMS details');
   
   try {
     if (!process.env.GEEZSMS_TOKEN) {
-      logger.error('Missing Geez SMS token in environment variables');
-      throw new Error('SMS service is not properly configured - missing token');
+      const error = new Error('SMS service is not properly configured - missing token');
+      logger.fatal(error.message);
+      throw error;
     }
     
-    logger.info('Sending SMS with token:', process.env.GEEZSMS_TOKEN.substring(0, 5) + '...');
+    logger.debug('Using SMS token:', process.env.GEEZSMS_TOKEN.substring(0, 4) + '...');
     
     const smsPayload = {
       phone: formattedPhone,
@@ -53,18 +107,48 @@ async function sendAppointmentSMS(phone, message) {
     const result = await singleSMSUtil.sendSingleSMS(smsPayload);
     
     logger.info({ 
-      phone: formattedPhone, 
-      messageId: result.data?.api_log_id 
-    }, "Appointment SMS sent successfully");
+      phone: formattedPhone.replace(/\d(?=\d{4})/g, '*'),
+      messageId: result?.data?.api_log_id || 'unknown',
+      response: result?.data ? 'Success' : 'No response data'
+    }, "SMS sent successfully");
+    
+    // Log to database if needed
+    try {
+      await SmsLog.create({
+        phone: formattedPhone,
+        message: message.substring(0, 160), // First 160 chars
+        status: 'sent',
+        messageId: result?.data?.api_log_id,
+        response: JSON.stringify(result?.data || {})
+      });
+    } catch (dbError) {
+      logger.error({ error: dbError.message }, 'Failed to log SMS to database');
+    }
     
     return result;
   } catch (error) {
-    logger.error({ 
-      error: error.message, 
-      phone: formattedPhone,
-      response: error.response?.data,
-      stack: error.stack
-    }, "Failed to send appointment SMS");
+    const errorData = {
+      ...logContext,
+      error: error.message,
+      formattedPhone: formattedPhone.replace(/\d(?=\d{4})/g, '*'),
+      response: error.response?.data || 'No response data',
+      statusCode: error.response?.status
+    };
+    
+    logger.error(errorData, "Failed to send SMS");
+    
+    // Log failed attempt to database
+    try {
+      await SmsLog.create({
+        phone: formattedPhone,
+        message: message?.substring(0, 160) || 'No message',
+        status: 'failed',
+        error: error.message,
+        response: JSON.stringify(error.response?.data || {})
+      });
+    } catch (dbError) {
+      logger.error({ error: dbError.message }, 'Failed to log failed SMS to database');
+    }
     throw error;
   }
 }

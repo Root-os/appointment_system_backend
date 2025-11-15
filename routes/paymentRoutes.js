@@ -1,7 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const {
-  createPayment,
+  initiatePayment,
+  verifyPayment,
+  handleWebhook,
   getAllPayments,
   getPaymentById,
   updatePayment,
@@ -12,8 +14,13 @@ const {
   updatePaymentValidation,
 } = require("../validations/paymentValidation");
 
-// Routes
-router.post("/", createPaymentValidation, createPayment);
+// SantimPay Integration Routes
+router.post("/initiate", authenticateUser, initiatePayment);
+router.get("/verify/:reference", authenticateUser, verifyPayment);
+router.post("/webhook/santimpay", handleWebhook);
+
+// Existing Payment Routes
+router.post("/", authenticateUser, createPaymentValidation, initiatePayment);
 router.get("/", authenticateUser, getAllPayments);
 router.get("/:id", authenticateUser, getPaymentById);
 router.put("/:id", authenticateUser, updatePaymentValidation, updatePayment);

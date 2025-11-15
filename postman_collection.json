@@ -704,10 +704,10 @@
       ]
     },
     {
-      "name": "Payment Management",
+      "name": "Payment Management - SantimPay",
       "item": [
         {
-          "name": "Create Payment",
+          "name": "Initiate Payment (SantimPay)",
           "request": {
             "method": "POST",
             "header": [
@@ -722,12 +722,50 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"orderId\": 1,\n  \"amount\": 150.00,\n  \"paymentOption\": \"credit_card\",\n  \"json\": {\n    \"cardNumber\": \"****1234\",\n    \"transactionId\": \"txn_123456\"\n  }\n}"
+              "raw": "{\n  \"orderId\": 4,\n  \"amount\": 150.00,\n  \"phoneNumber\": \"0911223344\",\n  \"description\": \"Payment for medical service\",\n  \"successUrl\": \"http://localhost:3000/payment/success\",\n  \"failureUrl\": \"http://localhost:3000/payment/failed\",\n  \"notifyUrl\": \"http://localhost:5000/api/payments/webhook/santimpay\"\n}"
             },
             "url": {
-              "raw": "{{baseUrl}}/payments",
+              "raw": "{{baseUrl}}/payments/initiate",
               "host": ["{{baseUrl}}"],
-              "path": ["payments"]
+              "path": ["payments", "initiate"]
+            }
+          }
+        },
+        {
+          "name": "Verify Payment (SantimPay)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{customerToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/payments/verify/PAY-1234567890",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "verify", "PAY-1234567890"]
+            }
+          }
+        },
+        {
+          "name": "Payment Webhook (SantimPay)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"PAY-1234567890\",\n  \"status\": \"success\",\n  \"transactionId\": \"GW-TXN-123456789\",\n  \"amount\": 15000,\n  \"msisdn\": \"+251911223344\",\n  \"timestamp\": \"2024-01-15T10:30:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payments/webhook/santimpay",
+              "host": ["{{baseUrl}}"],
+              "path": ["payments", "webhook", "santimpay"]
             }
           }
         },
@@ -786,7 +824,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"completed\",\n  \"json\": {\n    \"cardNumber\": \"****1234\",\n    \"transactionId\": \"txn_123456\",\n    \"completedAt\": \"2024-01-01T12:00:00Z\"\n  }\n}"
+              "raw": "{\n  \"status\": \"completed\",\n  \"transactionId\": \"GW-TXN-123456789\",\n  \"json\": {\n    \"paymentMethod\": \"Telebirr\",\n    \"completedAt\": \"2024-01-01T12:00:00Z\"\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/payments/1",

@@ -1,10 +1,11 @@
 const { Payment, Order, Reservation, Service, sequelize } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
+const santimPay = require("../utils/santimPay");
 
-// Create payment
-const createPayment = async (req, res) => {
-  const t = await sequelize.transaction(); // start transaction
+// Initialize payment with SantimPay
+const initiatePayment = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -15,68 +16,165 @@ const createPayment = async (req, res) => {
       });
     }
 
-    const { orderId, amount, paymentOption, json } = req.body;
+    const { orderId, amount, phoneNumber, description } = req.body;
+    
+    // Get order details
+    const order = await Order.findByPk(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: "Order not found" });
+    }
 
-    // 1️⃣ Create Payment
+    // Generate unique payment reference
+    const paymentReference = `PAY-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    // Create payment record
     const payment = await Payment.create(
       {
         orderId,
         amount,
-        paymentOption,
-        status: "completed", // mark as completed
-        json: json || {},
+        paymentOption: 'santimpay',
+        status: 'pending',
+        reference: paymentReference,
       },
       { transaction: t }
     );
 
-    // 2️⃣ Fetch the order with its service
-    const order = await Order.findByPk(orderId, { transaction: t });
-    if (!order) throw new Error("Order not found");
+    // Initialize SantimPay payment
+    const paymentResponse = await santimPay.initiatePayment({
+      orderId: paymentReference,
+      amount: amount, // Amount is already in the correct format
+      phoneNumber,
+      description: description || `Payment for order #${orderId}`,
+      successUrl: `${process.env.FRONTEND_URL}/payment/success?reference=${paymentReference}`,
+      failureUrl: `${process.env.FRONTEND_URL}/payment/failed?reference=${paymentReference}`,
+      notifyUrl: `${process.env.BACKEND_URL}/api/payments/webhook/santimpay`,
+    });
 
-    const service = await Service.findByPk(order.serviceId, { transaction: t });
-    if (!service) throw new Error("Service not found");
-
-    // 3️⃣ Generate Reservation
-    if (service.type === "fixed") {
-      await Reservation.create(
+    // Update payment with transaction ID from SantimPay response
+    if (paymentResponse.url) {
+      await payment.update(
         {
-          orderId,
-          date: order.date,
-          status: "confirmed",
-        },
-        { transaction: t }
-      );
-    } else if (service.type === "perDate" && order.date && order.dateCount) {
-      const startDate = new Date(order.date);
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + order.dateCount - 1);
-
-      await Reservation.create(
-        {
-          orderId,
-          startDate: startDate.toISOString().split("T")[0],
-          endDate: endDate.toISOString().split("T")[0],
-          status: "confirmed",
+          json: {
+            paymentUrl: paymentResponse.url,
+            initiatedAt: new Date().toISOString(),
+          },
         },
         { transaction: t }
       );
     }
 
-    // 4️⃣ Commit transaction
     await t.commit();
-
-    res.status(201).json({
+    
+    res.status(200).json({
       success: true,
-      message: "Payment created and reservation generated successfully",
-      data: { payment },
+      message: "Payment initiated successfully",
+      data: {
+        paymentId: payment.id,
+        paymentUrl: paymentResponse.url,
+        reference: payment.reference,
+        amount: amount,
+        orderId: orderId,
+      },
     });
   } catch (error) {
-    await t.rollback(); // rollback on error
-    console.error("Create payment error:", error);
+    await t.rollback();
+    console.error('Payment Initiation Error:', error);
     res.status(500).json({
       success: false,
-      message: "Internal server error",
-      error: error.message,
+      message: error.message || "Failed to initiate payment",
+    });
+  }
+};
+
+// Webhook handler for SantimPay
+const handleWebhook = async (req, res) => {
+  const { TxnId, Status, thirdPartyId, amount, msisdn } = req.body;
+
+  try {
+    console.log('SantimPay Webhook received:', JSON.stringify(req.body, null, 2));
+
+    // Find payment by reference (thirdPartyId from SantimPay)
+    const payment = await Payment.findOne({ where: { reference: thirdPartyId } });
+    if (!payment) {
+      console.warn('Payment not found for reference:', thirdPartyId);
+      return res.status(200).json({ 
+        success: false, 
+        message: "Payment not found",
+        thirdPartyId 
+      });
+    }
+
+    // Update payment status based on webhook status
+    const paymentStatus = Status === 'COMPLETED' ? 'completed' : 'failed';
+    
+    await payment.update({ 
+      status: paymentStatus,
+      transactionId: TxnId,
+      json: {
+        ...payment.json,
+        webhookData: {
+          txnId: TxnId,
+          status: Status,
+          amount: amount,
+          msisdn: msisdn,
+          receivedAt: new Date().toISOString(),
+        }
+      }
+    });
+
+    // If payment is completed, update related order status
+    if (paymentStatus === 'completed') {
+      const order = await Order.findByPk(payment.orderId);
+      if (order) {
+        await order.update({ status: 'paid' });
+        console.log('Order updated to paid status:', payment.orderId);
+      }
+    }
+
+    console.log('Payment updated successfully:', payment.id);
+    res.status(200).json({ 
+      success: true, 
+      message: "Webhook processed successfully",
+      paymentId: payment.id,
+      status: paymentStatus
+    });
+  } catch (error) {
+    console.error('Webhook Error:', error);
+    res.status(200).json({ 
+      success: false, 
+      message: "Webhook processing failed",
+      error: error.message 
+    });
+  }
+};
+
+// Verify payment status
+const verifyPayment = async (req, res) => {
+  try {
+    const { reference } = req.params;
+    const payment = await Payment.findOne({ where: { reference } });
+    
+    if (!payment) {
+      return res.status(404).json({ 
+        success: false, 
+        message: "Payment not found" 
+      });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      data: {
+        status: payment.status,
+        reference: payment.reference,
+        amount: payment.amount,
+        createdAt: payment.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Payment Verification Error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to verify payment status" 
     });
   }
 };
@@ -84,46 +182,41 @@ const createPayment = async (req, res) => {
 // Get all payments
 const getAllPayments = async (req, res) => {
   try {
-    const { page = 1, limit = 10, status = "" } = req.query;
+    const { page = 1, limit = 10, status, paymentOption } = req.query;
     const offset = (page - 1) * limit;
 
-    const whereClause = {};
-    if (status) {
-      whereClause.status = status;
-    }
+    const where = {};
+    if (status) where.status = status;
+    if (paymentOption) where.paymentOption = paymentOption;
 
-    const { count, rows } = await Payment.findAndCountAll({
-      where: whereClause,
+    const { count, rows: payments } = await Payment.findAndCountAll({
+      where,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
       include: [
         {
           model: Order,
           as: "order",
-          attributes: ["id", "description"],
+          include: ["customer", "service"],
         },
       ],
-      limit: parseInt(limit),
-      offset: parseInt(offset),
       order: [["createdAt", "DESC"]],
     });
 
     res.status(200).json({
       success: true,
-      data: {
-        payments: rows,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit),
-        },
+      data: payments,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        pages: Math.ceil(count / limit),
       },
     });
   } catch (error) {
-    console.error("Get all payments error:", error);
+    console.error("Error fetching payments:", error);
     res.status(500).json({
       success: false,
-      message: "Internal server error",
-      error: error.message,
+      message: error.message || "Error fetching payments",
     });
   }
 };
@@ -213,7 +306,9 @@ const updatePayment = async (req, res) => {
 };
 
 module.exports = {
-  createPayment,
+  initiatePayment,
+  handleWebhook,
+  verifyPayment,
   getAllPayments,
   getPaymentById,
   updatePayment,
