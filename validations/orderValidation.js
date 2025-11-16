@@ -2,6 +2,7 @@ const { body } = require("express-validator");
 
 const createOrderValidation = [
   body("serviceId")
+    .optional()
     .isInt({ min: 1 })
     .withMessage("Valid service ID is required"),
   body("customerId")

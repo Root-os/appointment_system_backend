@@ -3,8 +3,7 @@ const jwt = require("jsonwebtoken");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
-// Generate JWT token
-// Generate JWT token
+
 const generateToken = (customer) => {
   return jwt.sign(
     {
@@ -59,8 +58,7 @@ const registerCustomer = async (req, res) => {
     });
 
     // Generate token
-    const token = generateToken(customer.id);
-
+    const token = generateToken(customer);
     res.status(201).json({
       success: true,
       message: "Customer registered successfully",
@@ -96,9 +94,7 @@ const loginCustomer = async (req, res) => {
         errors: errors.array(),
       });
     }
-
     const { email, password } = req.body;
-
     // Find customer
     const customer = await Customer.findOne({
       where: { email },
@@ -110,7 +106,6 @@ const loginCustomer = async (req, res) => {
         message: "Invalid email or password",
       });
     }
-
 
     // Generate token
     const token = generateToken(customer);

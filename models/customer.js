@@ -49,7 +49,7 @@ Customer.beforeCreate(async (customer) => {
   if (customer.password) {
     customer.password = await bcrypt.hash(customer.password, 12);
   }
-});
+}); 
 
 Customer.beforeUpdate(async (customer) => {
   if (customer.changed("password")) {

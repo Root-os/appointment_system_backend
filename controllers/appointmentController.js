@@ -162,7 +162,11 @@ const updateAppointment = async (req, res) => {
     const { status, dateTime, hospitalName } = req.body;
 
     const appointment = await Appointment.findByPk(id, {
-      include: [{ model: Customer, as: 'customer' }]
+      include: [{ 
+        model: Customer, 
+        as: 'customer',
+        attributes: ['id', 'name', 'phone', 'email']  
+      }]
     });
     
     if (!appointment) {

@@ -2,6 +2,25 @@ const { Package } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 
+// Helper function to parse detail field
+const parsePackageDetail = (pkg) => {
+  if (!pkg) return pkg;
+  const parsed = pkg.toJSON ? pkg.toJSON() : { ...pkg };
+  if (parsed.detail && typeof parsed.detail === 'string') {
+    try {
+      parsed.detail = JSON.parse(parsed.detail);
+    } catch (e) {
+      // If parsing fails, keep as is
+    }
+  }
+  return parsed;
+};
+
+// Helper to parse array of packages
+const parsePackagesDetail = (packages) => {
+  return packages.map(parsePackageDetail);
+};
+
 // Create package
 const createPackage = async (req, res) => {
   try {
@@ -14,18 +33,22 @@ const createPackage = async (req, res) => {
       });
     }
 
-    const { name, price, description } = req.body;
+    const { name, price, detail, status } = req.body;
+
+    // Added JSON parsing to ensure detail field is stored as proper JSON object, not stringified
+    const packageDetail = typeof detail === 'string' ? JSON.parse(detail) : detail;
 
     const package = await Package.create({
       name,
       price,
-      description,
+      detail: packageDetail,
+      status,
     });
 
     res.status(201).json({
       success: true,
       message: "Package created successfully",
-      data: { package },
+      data: parsePackageDetail(package),
     });
   } catch (error) {
     console.error("Create package error:", error);
@@ -40,15 +63,18 @@ const createPackage = async (req, res) => {
 // Get all packages
 const getAllPackages = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const { page = 1, limit = 10, search = "", status } = req.query;
     const offset = (page - 1) * limit;
 
     const whereClause = {};
     if (search) {
       whereClause[Op.or] = [
         { name: { [Op.like]: `%${search}%` } },
-        { description: { [Op.like]: `%${search}%` } },
       ];
+    }
+
+    if (status) {
+      whereClause.status = status;
     }
 
     const { count, rows } = await Package.findAndCountAll({
@@ -60,14 +86,13 @@ const getAllPackages = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: {
-        packages: rows,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit),
-        },
+      message: "Packages retrieved successfully",
+      data: parsePackagesDetail(rows),
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
       },
     });
   } catch (error) {
@@ -96,7 +121,8 @@ const getPackageById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: { package },
+      message: "Package retrieved successfully",
+      data: parsePackageDetail(package),
     });
   } catch (error) {
     console.error("Get package by ID error:", error);
@@ -130,12 +156,16 @@ const updatePackage = async (req, res) => {
       });
     }
 
-    const allowedUpdates = ["name", "price", "description"];
+    const allowedUpdates = ["name", "price", "detail", "status"];
 
     const updates = {};
     allowedUpdates.forEach((field) => {
       if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+        if (field === 'detail') {
+          updates[field] = typeof req.body[field] === 'string' ? JSON.parse(req.body[field]) : req.body[field];
+        } else {
+          updates[field] = req.body[field];
+        }
       }
     });
 
@@ -144,7 +174,7 @@ const updatePackage = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Package updated successfully",
-      data: { package },
+      data: parsePackageDetail(package),
     });
   } catch (error) {
     console.error("Update package error:", error);
@@ -175,6 +205,7 @@ const deletePackage = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Package deleted successfully",
+      data: null,
     });
   } catch (error) {
     console.error("Delete package error:", error);

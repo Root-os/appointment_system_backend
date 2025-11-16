@@ -18,11 +18,11 @@ const moment = require("moment");
 require('dotenv').config();
 
 // Log environment configuration
-logger.info('=== SMS Service Initialization ===');
-logger.info(`GEEZSMS_TOKEN: ${process.env.GEEZSMS_TOKEN ? '***' + process.env.GEEZSMS_TOKEN.slice(-4) : 'NOT SET'}`);
-logger.info(`GEEZSMS_SHORTCODE_ID: ${process.env.GEEZSMS_SHORTCODE_ID || 'Not set'}`);
-logger.info(`GEEZSMS_WEBHOOK_URL: ${process.env.GEEZSMS_WEBHOOK_URL || 'Not set'}`);
-logger.info(`APPOINTMENT_REMINDER_HOURS: ${process.env.APPOINTMENT_REMINDER_HOURS || '24 (default)'}`);
+// logger.info('=== SMS Service Initialization ===');
+// logger.info(`GEEZSMS_TOKEN: ${process.env.GEEZSMS_TOKEN ? '***' + process.env.GEEZSMS_TOKEN.slice(-4) : 'NOT SET'}`);
+// logger.info(`GEEZSMS_SHORTCODE_ID: ${process.env.GEEZSMS_SHORTCODE_ID || 'Not set'}`);
+// logger.info(`GEEZSMS_WEBHOOK_URL: ${process.env.GEEZSMS_WEBHOOK_URL || 'Not set'}`);
+// logger.info(`APPOINTMENT_REMINDER_HOURS: ${process.env.APPOINTMENT_REMINDER_HOURS || '24 (default)'}`);
 
 // Initialize SMS utility with token
 let singleSMSUtil;

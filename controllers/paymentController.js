@@ -1,7 +1,8 @@
-const { Payment, Order, Reservation, Service, sequelize } = require("../models");
+const { Payment, Order, Reservation, Service, Customer, sequelize } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
 const santimPay = require("../utils/santimPay");
+const appointmentSMSController = require("../controllers/appointmentSMSController");
 
 // Initialize payment with SantimPay
 const initiatePayment = async (req, res) => {
@@ -61,6 +62,17 @@ const initiatePayment = async (req, res) => {
         },
         { transaction: t }
       );
+
+      // Send SMS with payment URL to customer
+      const customer = await Customer.findByPk(order.customerId);
+      if (customer) {
+        try {
+          const smsMessage = `Your payment URL is: ${paymentResponse.url}`;
+          await appointmentSMSController.sendAppointmentSMS(customer.phone, smsMessage);
+        } catch (error) {
+          console.error('Error sending SMS:', error);
+        }
+      }
     }
 
     await t.commit();

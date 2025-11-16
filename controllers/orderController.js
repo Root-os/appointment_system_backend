@@ -1,11 +1,34 @@
 const { Order, Service, Customer, Package } = require("../models");
 const { validationResult } = require("express-validator");
 const { Op } = require("sequelize");
+require("dotenv").config();
+
+// Helper function to convert file path to full URL
+const getFullFileUrl = (filePath) => {
+  if (!filePath) return null;
+  const baseUrl = process.env.BACKEND_URL || "http://localhost:5000";
+  return `${baseUrl}/${filePath}`;
+};
+
+// Helper to add full URL to order object
+const formatOrderResponse = (order) => {
+  if (!order) return order;
+  const formatted = order.toJSON ? order.toJSON() : { ...order };
+  if (formatted.file) {
+    formatted.fileUrl = getFullFileUrl(formatted.file);
+  }
+  return formatted;
+};
+
+// Helper to format array of orders
+const formatOrdersResponse = (orders) => {
+  return orders.map(formatOrderResponse);
+};
 
 // Create order
 const createOrder = async (req, res) => {
   try {
-        console.log("=== req.body ===", req.body);
+    console.log("=== req.body ===", req.body);
     console.log("=== req.file ===", req.file);
     console.log("=== date field ===", req.body.date);
     const errors = validationResult(req);
@@ -42,7 +65,7 @@ const createOrder = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Order created successfully",
-      data: { order },
+      data: formatOrderResponse(order),
     });
   } catch (error) {
     console.error("Create order error:", error);
@@ -99,14 +122,13 @@ const getAllOrders = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: {
-        orders: rows,
-        pagination: {
-          total: count,
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalPages: Math.ceil(count / limit),
-        },
+      message: "Orders retrieved successfully",
+      data: formatOrdersResponse(rows),
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / limit),
       },
     });
   } catch (error) {
@@ -122,7 +144,7 @@ const getAllOrders = async (req, res) => {
 // Get orders for logged-in customer
 const getMyOrders = async (req, res) => {
   try {
-    const customerId = req.user.id; // from decoded token
+    const customerId = req.user.id; 
 
     const orders = await Order.findAll({
       where: { customerId },
@@ -144,7 +166,8 @@ const getMyOrders = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: { orders },
+      message: "My orders retrieved successfully",
+      data: formatOrdersResponse(orders),
     });
   } catch (error) {
     console.error("Get my orders error:", error);
@@ -191,7 +214,8 @@ const getOrderById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: { order },
+      message: "Order retrieved successfully",
+      data: formatOrderResponse(order),
     });
   } catch (error) {
     console.error("Get order by ID error:", error);
@@ -243,7 +267,7 @@ const updateOrder = async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Order updated successfully",
-      data: { order },
+      data: formatOrderResponse(order),
     });
   } catch (error) {
     console.error("Update order error:", error);

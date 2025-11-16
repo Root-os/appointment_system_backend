@@ -9,7 +9,7 @@ const Order = sequelize.define("Order", {
   },
   serviceId: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: true,
     references: {
       model: "Service",
       key: "id",

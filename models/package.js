@@ -23,8 +23,12 @@ const Package = sequelize.define("Package", {
     },
   },
   detail: {
-    type: DataTypes.TEXT,
+    type: DataTypes.JSON,
     allowNull: true,
+  },
+  status: {
+    type: DataTypes.ENUM("active", "inactive"),
+    defaultValue: "active",
   },
 });
 
